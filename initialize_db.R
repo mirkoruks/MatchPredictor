@@ -27,10 +27,10 @@ create_competitions_table(con)  # , hard = TRUE)
 #               name = "competitions",
 #               value = competitions)
 
-create_fixtures_table(con)  # , hard = TRUE)
-# dbAppendTable(conn = con,
-#               name = "fixtures",
-#               value = fixtures)
+create_fixtures_table(con)
+dbAppendTable(conn = con,
+              name = "fixtures",
+              value = fixtures)
 
 create_shot_data_table(con)  # , hard = TRUE)
 # dbAppendTable(conn = con,
