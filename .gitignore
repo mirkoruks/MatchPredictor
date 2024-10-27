@@ -1,0 +1,6 @@
+.Rhistory
+.Rproj*
+*.Rproj
+data/*
+*.db
+*.sqlite
