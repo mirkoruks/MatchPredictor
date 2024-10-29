@@ -6,3 +6,4 @@ data/*
 *.sqlite
 .Rproj.user
 log/*
+matchpredictor.bat

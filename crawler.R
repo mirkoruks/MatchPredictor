@@ -1,7 +1,7 @@
 rm(list = ls())
 
-logfilename <- paste0("log/logfile_",str_replace(format(Sys.time(), "%Y%m%d%H%M%S%Z"), " ", "_"),".txt")
-sink(file = logfilename, split = TRUE)
+logfilename <- paste0("log/logfile_",format(Sys.time(), "%Y%m%d%H%M%S%Z"),".txt")
+sink(file = logfilename, split = TRUE, )
 
 cat("Load libraries\n")
 library(rvest)
