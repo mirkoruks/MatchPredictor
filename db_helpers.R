@@ -4,13 +4,10 @@ create_seasons_table <- function(con, hard = FALSE) {
   query_create_seasons_table <- "CREATE TABLE seasons
   (     season TEXT,
      competition_name TEXT,
-     x__squads REAL,
-     champion TEXT,
-     top_scorer TEXT,
-     season_start REAL,
-     season_end REAL,
+     season_start INTEGER,
+     season_end INTEGER,
      links TEXT,
-     comp_id REAL,
+     comp_id INTEGER,
      PRIMARY KEY(season, comp_id)
   )"
   if (hard == TRUE) {
@@ -48,6 +45,12 @@ create_fixtures_table <- function(con, hard = FALSE) {
      match_id TEXT,
      link_match TEXT,
      scraped INTEGER,
+     Elo_home REAL,
+     Elo_away REAL,
+     Elodiff_home REAL,
+     We_home REAL,
+     We_away REAL,
+     tuning INTEGER,
      PRIMARY KEY(match_id)
   )"
   if (hard == TRUE) {
@@ -65,9 +68,9 @@ create_competitions_table <- function(con, hard = FALSE) {
      last_season TEXT,
      tier TEXT,
      links TEXT,
-     comp_id REAL,
-     last_season_start REAL,
-     last_season_end REAL,
+     comp_id INTEGER,
+     last_season_start INTEGER,
+     last_season_end INTEGER,
      PRIMARY KEY(comp_id)
   )"
   if (hard == TRUE) {
@@ -120,26 +123,26 @@ create_keeper_data_table <- function(con, hard = FALSE) {
      nation TEXT,
      age TEXT,
      min REAL,
-     shot_stopping_sota REAL,
-     shot_stopping_ga REAL,
-     misc_shot_stopping_saves REAL,
-     misc_shot_stopping_savepct REAL,
-     misc_shot_stopping_psxg REAL,
-     misc_launched_cmp REAL,
-     misc_launched_att REAL,
-     misc_launched_cmppct REAL,
-     misc_passes_att_gk REAL,
-     misc_passes_thr REAL,
-     misc_passes_launchpct REAL,
-     misc_passes_avglen REAL,
-     misc_goal_kicks_att REAL,
-     misc_goal_kicks_launchpct REAL,
-     misc_goal_kicks_avglen REAL,
-     misc_crosses_opp REAL,
-     misc_crosses_stp REAL,
-     misc_crosses_stppct REAL,
-     misc_sweeper_numberopa REAL,
-     misc_sweeper_avgdist REAL,
+     keeper_shot_stopping_sota REAL,
+     keeper_shot_stopping_ga REAL,
+     keeper_shot_stopping_saves REAL,
+     keeper_shot_stopping_savepct REAL,
+     keeper_shot_stopping_psxg REAL,
+     keeper_launched_cmp REAL,
+     keeper_launched_att REAL,
+     keeper_launched_cmppct REAL,
+     keeper_passes_att_gk REAL,
+     keeper_passes_thr REAL,
+     keeper_passes_launchpct REAL,
+     keeper_passes_avglen REAL,
+     keeper_goal_kicks_att REAL,
+     keeper_goal_kicks_launchpct REAL,
+     keeper_goal_kicks_avglen REAL,
+     keeper_crosses_opp REAL,
+     keeper_crosses_stp REAL,
+     keeper_crosses_stppct REAL,
+     keeper_sweeper_numberopa REAL,
+     keeper_sweeper_avgdist REAL,
      player_links TEXT,
      player_id TEXT,
      comp_name TEXT,
@@ -296,7 +299,7 @@ create_field_data_table <- function(con, hard = FALSE) {
   dbExecute(con, query_create_field_data_table)
 }
 
-create_event_data_table <- function(con) {
+create_event_data_table <- function(con, hard = FALSE) {
   query_create_event_data_table <- 
     "CREATE TABLE event_data
           (match_id TEXT,
