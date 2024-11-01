@@ -4,12 +4,13 @@ logfilename <- paste0("log/logfile_",format(Sys.time(), "%Y%m%d%H%M%S%Z"),".txt"
 sink(file = logfilename, split = TRUE, )
 
 cat("Load libraries\n")
-library(rvest)
-library(tidyverse)
-library(DBI)
-library(RSQLite)
-library(glue)
-library(httr2)
+
+suppressMessages(library(rvest))
+suppressMessages(library(tidyverse))
+suppressMessages(library(DBI))
+suppressMessages(library(RSQLite))
+suppressMessages(library(glue))
+suppressMessages(library(httr2))
 
 cat("Get helper functions\n")
 source("crawler_helpers.R")

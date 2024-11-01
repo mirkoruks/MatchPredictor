@@ -1,5 +1,20 @@
 # sql helpers
 
+create_images_table <- function(con, hard = FALSE) {
+  query_create_images_table <- "CREATE TABLE images
+  (     comp_id INTEGER,
+  season TEXT,
+     image_link TEXT,
+     team_id TEXT,
+     team_name TEXT,
+     PRIMARY KEY(comp_id, season, team_id)
+  )"
+  if (hard == TRUE) {
+    dbExecute(con, "DROP TABLE IF EXISTS images")
+  }
+  dbExecute(con, query_create_images_table)
+}
+
 create_seasons_table <- function(con, hard = FALSE) {
   query_create_seasons_table <- "CREATE TABLE seasons
   (     season TEXT,
