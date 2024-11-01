@@ -138,13 +138,124 @@ get_seasons_data <- function(df_comp, con) {
   
 }
 
+# Get images data ----
+
+download_image <- function(image_link) {
+  
+  image_dir <- paste0("data/images/")
+  if (!dir.exists(image_dir)) {
+    dir.create(image_dir, recursive = T)
+  }
+  image_name <- image_link %>% 
+    str_replace(".*fb/","")
+  download.file(image_link, paste0(image_dir,image_name), mode = "wb")
+}
+
+get_image_data <- function(df_season) {
+  
+  image_list <- list()
+  for (i in 1:nrow(df_seasons)) {
+    
+    stats_season <- df_seasons %>% 
+      arrange(desc(season_end)) %>% 
+      filter(row_number() == as.numeric(i)) %>% 
+      pull(season)
+    
+    stats_compid <- df_seasons %>% 
+      arrange(desc(season_end)) %>% 
+      filter(row_number() == as.numeric(i)) %>% 
+      pull(comp_id)
+    
+    fixture_link <- df_seasons %>% 
+      arrange(desc(season_end)) %>% 
+      filter(row_number() == as.numeric(i)) %>% 
+      pull(links)
+    
+    stats_compname <- df_seasons %>% 
+      arrange(desc(season_end)) %>% 
+      filter(row_number() == as.numeric(i)) %>% 
+      pull(competition_name) 
+    
+    if ("images" %in% dbListTables(con)) {
+      Sys.sleep(0.2)
+      existing_images <- dbGetQuery(con, paste0("select * from images where season = '",stats_season,"' AND comp_id = ",stats_compid))
+      if (nrow(existing_images) > 0) {
+        continue <- FALSE
+        cat(paste0("Image data for ",stats_compname, " (",stats_season,") is already complete\n"))
+      } else {
+        continue <- TRUE
+      }
+    } else {
+      continue <- TRUE
+    }
+    
+    if (continue == TRUE) {
+      
+      
+      stats_link <- fixture_link %>% 
+        str_replace("/schedule","") %>% 
+        str_replace("Scores-and-Fixtures","Stats")
+      
+      Sys.sleep(6)
+      cat(paste0("Get image data for ",stats_compname, " (",stats_season,")\n"))
+      image_page <- read_html(stats_link)
+      
+      image_links <- image_page %>%
+        html_element(paste0("#all_results",stats_season,stats_compid,"1")) %>% 
+        html_element("tbody") %>% 
+        html_elements("tr") %>% 
+        html_elements("td[data-stat='team']") %>% 
+        html_elements("img") %>% 
+        html_attr("src") 
+      
+      team_name <- image_page %>%
+        html_element(paste0("#all_results",stats_season,stats_compid,"1")) %>% 
+        html_element("tbody") %>% 
+        html_elements("tr") %>% 
+        html_elements("td[data-stat='team']") %>% 
+        html_elements("a") %>% 
+        html_text2()
+      
+      image_links <- image_links %>% 
+        str_replace_all("mini\\.","")
+      
+      team_id <- image_links %>% 
+        str_remove_all("(.*fb/)|(.png)")
+      
+      image_list[[i]] <- tibble(comp_id = stats_compid,
+                                season = stats_season,
+                                image_link = image_links,
+                                team_id = team_id,
+                                team_name = team_name)
+      
+    }
+  }
+  image_df <- image_list %>% 
+    bind_rows()
+  
+  if (nrow(image_df) > 0) {
+    image_link_vector <- image_df %>% 
+      distinct(image_link) %>% 
+      pull(image_link)
+    
+    walk(image_link_vector, download_image)
+    
+    if (!("images" %in% dbListTables(con))) {
+      create_images_table(con)
+      cat("Created images table in database\n")
+    } 
+    dbAppendTable(con, "images", image_df)
+    Sys.sleep(0.2)
+    cat("Append image data to images table in database\n")
+  } else {
+    cat("Image data is complete. No need to update! Have a great day!\n")
+  }
+}
+
+
 # Get fixtures data ----
 
-## Helper functions ----
-### Get elo data ----
-
 scrape_elo <- function(club) {
-  #Sys.sleep(1)
   cat("Read ELO data for",club,"\n")
   req <- httr2::request(paste0("api.clubelo.com/",club))
   resp <- tryCatch(
