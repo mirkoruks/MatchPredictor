@@ -151,7 +151,7 @@ download_image <- function(image_link) {
   download.file(image_link, paste0(image_dir,image_name), mode = "wb")
 }
 
-get_image_data <- function(df_season) {
+get_image_data <- function(df_seasons) {
   
   image_list <- list()
   for (i in 1:nrow(df_seasons)) {
