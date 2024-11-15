@@ -3,7 +3,7 @@
 rm(list = ls())
 
 library(tidyverse)
-library(tidymodels)
+
 library(DBI)
 library(RSQLite)
 library(zoo)
@@ -20,7 +20,9 @@ keeper_data <- dbGetQuery(con, "SELECT * FROM keeper_data")
 cat("Prepare fixtures data\n")
 fixture_data <- fixture_data %>% 
   filter(scraped == 1) %>% 
-  select(date, day, xg_home, xg_away, goals_home, goals_away, points_home, points_away, home_id, away_id, match_id, attendance, time, Elo_home, Elo_away) %>% 
+  mutate(conceded_home = goals_away,
+         conceded_away = goals_home) %>% 
+  select(date, day, xg_home, xg_away, goals_home, goals_away, points_home, points_away, home_id, away_id, match_id, attendance, time, conceded_home, conceded_away, Elo_home, Elo_away, Elodiff_home, We_home, We_away) %>% 
   mutate(day = case_when(day == "Mon" ~ 1,
                          day == "Tue" ~ 2,
                          day == "Wed" ~ 3,
@@ -30,12 +32,14 @@ fixture_data <- fixture_data %>%
                          day == "Sun" ~ 7,
                          TRUE ~ NA),
          time = str_extract(time, "\\d\\d:\\d\\d"),
-         time = as.numeric(hm(time))) %>% 
+         time = as.numeric(hm(time)),
+         Elodiff_away = Elodiff_home * -1) %>% 
   rename(team_id_home = home_id,
          team_id_away = away_id) %>% 
   pivot_longer(cols = ends_with(c("_home","_away")),
                names_to = c(".value","type"),
-               names_pattern = "(.*)_(.*)$")
+               names_pattern = "(.*)_(.*)$") %>% 
+  mutate(xg_performance = goals/xg)
 
 
 # Prepare field data table ----
@@ -112,35 +116,41 @@ fixture_data <- fixture_data %>%
   relocate(team_id, .before = "day")
 
 feature_space_raw <- names(fixture_data)[-c(1:4)]
+
 cat("Create lagged variables\n")
 fixture_data_final <- fixture_data %>% 
   arrange(as.Date(date)) %>% 
   group_by(team_id) %>% 
-  mutate(across(.cols = all_of(feature_space_raw),
+  mutate(EloChange = Elo - lag(Elo),
+         ElodiffChange = Elodiff - lag(Elodiff),
+         WeChange = We - lag(We)) %>% 
+  mutate(across(.cols = all_of(feature_space_raw[!(feature_space_raw %in% c("Elo","Elodiff","We"))]),
+                .fns = ~ lag(.x) - lag(.x,2),
+                .names = "{col}Change")) %>% 
+  ungroup()
+
+#fixture_data_final %>% select(date,match_id, type, team_id, starts_with(c("Elo","passing_medium_cmppct"))) %>% View()
+feature_space_update <- names(fixture_data_final)[-c(1:4)]
+
+fixture_data_final <- fixture_data_final %>% 
+  arrange(as.Date(date)) %>% 
+  group_by(team_id) %>% 
+  mutate(across(.cols = all_of(feature_space_update),
                 .fns = ~ rollapply(lag(.x), 5, mean, na.rm = TRUE, align = "right", fill = NA),
                 .names = "{col}_mean5"),
-         across(.cols = all_of(feature_space_raw),
-                .fns = ~ rollapply(lag(.x), 5, sd, na.rm = TRUE, align = "right", fill = NA),
-                .names = "{col}_sd5"),
-         across(.cols = all_of(feature_space_raw),
+         across(.cols = all_of(feature_space_update),
                 .fns = ~ rollapply(lag(.x), 10, mean, na.rm = TRUE, align = "right", fill = NA),
                 .names = "{col}_mean10"),
-         across(.cols = all_of(feature_space_raw),
-                .fns = ~ rollapply(lag(.x), 10, sd, na.rm = TRUE, align = "right", fill = NA),
-                .names = "{col}_sd10"),
-         across(.cols = all_of(feature_space_raw),
+         across(.cols = all_of(feature_space_update),
                 .fns = ~ rollapply(lag(.x), 15, mean, na.rm = TRUE, align = "right", fill = NA),
-                .names = "{col}_mean15"),
-         across(.cols = all_of(feature_space_raw),
-                .fns = ~ rollapply(lag(.x), 15, sd, na.rm = TRUE, align = "right", fill = NA),
-                .names = "{col}_sd15")) %>% 
+                .names = "{col}_mean15")) %>% 
   ungroup()
 
 fixture_data_final <- fixture_data_final %>% 
   mutate(home_result = case_when(points == 0 ~ "L",
                                  points == 1 ~ "D",
-                                 points == 3 ~ "W")) %>% 
-  select(date, match_id, type, team_id, day, time, home_result, Elo, ends_with(c("_mean5", "_sd5", "_mean10", "_sd10", "_mean15", "_sd15")))
+                                 points == 3 ~ "W"),
+         home_result = factor(home_result)) 
 
 fixture_data_final
 
@@ -148,14 +158,19 @@ cat("Create difference scores\n")
 fixture_data_final <- fixture_data_final %>% 
   group_by(match_id) %>% 
   arrange(type, .by_group = TRUE) %>% 
-  mutate(across(c(Elo, goals_mean5, ends_with(c("_mean5", "_sd5", "_mean10", "_sd10", "_mean15", "_sd15"))),
+  mutate(across(c(ends_with(c("_mean5", "_mean10", "_mean15"))),
                 ~ .x - lag(.x),
                 .names = "HomeDiff_{col}")) %>% 
   ungroup()
 
+
 fixture_data_final <- fixture_data_final %>% 
   filter(type == "home") %>% 
-  select(date, match_id, home_result, day, time, Elo, starts_with("HomeDiff"))
+  select(date, match_id, home_result, day, time, Elo, Elodiff, We, starts_with(c("HomeDiff")))
+
+# %>% 
+# select(date, match_id, type, team_id, day, time, Elo, Elodiff, We, home_result, ends_with(c("_mean5", "_mean10", "_mean15")))
 
 write_csv(fixture_data_final, "data/modeldata.csv")
+
 
