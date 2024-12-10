@@ -38,8 +38,7 @@ fixture_data <- fixture_data %>%
          team_id_away = away_id) %>% 
   pivot_longer(cols = ends_with(c("_home","_away")),
                names_to = c(".value","type"),
-               names_pattern = "(.*)_(.*)$") %>% 
-  mutate(xg_performance = goals/xg)
+               names_pattern = "(.*)_(.*)$") 
 
 
 # Prepare field data table ----
@@ -172,5 +171,4 @@ fixture_data_final <- fixture_data_final %>%
 # select(date, match_id, type, team_id, day, time, Elo, Elodiff, We, home_result, ends_with(c("_mean5", "_mean10", "_mean15")))
 
 write_csv(fixture_data_final, "data/modeldata.csv")
-
 

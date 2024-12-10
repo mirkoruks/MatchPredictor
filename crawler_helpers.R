@@ -34,6 +34,9 @@ get_comp_data <- function(basic_url, con) {
   colnames(comp_table) <- str_replace_all(colnames(comp_table), "\\.", "_")
   
   create_competitions_table(con , hard = TRUE)
+  comp_table <- comp_table %>% 
+    select(all_of(dbListFields(con, "competitions")))
+  
   dbAppendTable(conn = con,
                 name = "competitions",
                 value = comp_table)
@@ -735,7 +738,7 @@ get_match_data <- function(df_seasons, df_fixtures, con) {
 Reading data for ", comp_name, " (Season ", current_season,")
 ---------------------------------------------------\n", sep = "")
     fixtures_season <- df_fixtures %>% 
-      filter(season == current_season & comp_id == id & match_report == "Match Report" & scraped == 0 & notes == "") %>%    
+      filter(season == current_season & comp_id == id & match_report == "Match Report" & scraped == 0 & (notes == "" | is.na(notes))) %>%    
       dplyr::select(wk, date, home, away, home_id, away_id, match_id, link_match)
     
     if (nrow(fixtures_season) == 0) {
